@@ -1,0 +1,627 @@
+<?xml version="1.0"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+<?rfc comments="yes"?>
+<?rfc compact="yes"?>
+<?rfc inline="yes"?>
+<?rfc sortrefs="yes"?>
+<?rfc subcompact="no"?>
+<?rfc symrefs="yes"?>
+<?rfc toc="yes"?>
+<?rfc tocdepth="3"?>
+<?rfc tocindent="yes"?>
+<?rfc tocompact="yes"?>
+
+<rfc category="std" docName="draft-keyupate-idr-rcn-00"
+ipr="pre5378Trust200902">
+
+  <front>
+
+    <title abbrev="Root Cause Notification">
+    Root cause notification to solve BGP path hunting</title>
+
+    <author fullname="Keyur Patel" initials="K.P."
+            surname="Patel">
+      <organization>Cisco Systems</organization>
+
+      <address>
+        <postal>
+          <street>170 W. Tasman Drive</street>
+          <city>San Jose</city>
+
+          <region>CA</region>
+
+          <code>95134</code>
+
+          <country>USA</country>
+        </postal>
+
+        <email>keyupate@cisco.com</email>
+      </address>
+    </author>
+
+    <author fullname="Chandra Appanna" initials="C.A."
+            surname="Appanna">
+      <organization>Cisco Systems</organization>
+
+      <address>
+        <postal>
+          <street>170 W. Tasman Drive</street>
+          <city>San Jose</city>
+
+          <region>CA</region>
+
+          <code>95134</code>
+
+          <country>USA</country>
+        </postal>
+
+        <email>chandra@cisco.com</email>
+      </address>
+    </author>
+
+    <author fullname="Pradosh Mohapatra" initials="P.M."
+            surname="Mohapatra">
+      <organization>Cisco Systems</organization>
+
+      <address>
+        <postal>
+          <street>170 W. Tasman Drive</street>
+          <city>San Jose</city>
+
+          <region>CA</region>
+
+          <code>95134</code>
+
+          <country>USA</country>
+        </postal>
+
+        <email>pmohapat@cisco.com</email>
+      </address>
+    </author>
+
+    <author fullname="John Scudder" initials="J.S."
+            surname="Scudder">
+      <organization>Juniper Networks</organization>
+
+      <address>
+        <postal>
+          <street>1194 N. Mathilda Ave</street>
+
+          <!-- Reorder these if your country does things differently -->
+
+          <city>Sunnyvale</city>
+
+          <region>CA</region>
+
+          <code>94089</code>
+
+          <country>USA</country>
+        </postal>
+
+        <email>jgs@juniper.net</email>
+
+        <!-- uri and facsimile elements may also be added -->
+      </address>
+    </author>
+
+  <author fullname="James Uttaro" initials="J.U."
+            surname="Uttaro">
+      <organization>ATT</organization>
+      <address>
+        <postal>
+          <street>200 S. Laurel Avenue</street>
+          <city>Middletown</city>
+          <region>NJ</region>
+          <code>07748</code>
+          <country>USA</country>
+        </postal>
+        <email>uttaro@att.com</email>
+      </address>
+    </author>
+
+    <date month="February" year="2010" />
+
+  <abstract>
+   <t>Whenever a prefix is withdrawn using BGP withdrawl mechanism, it
+    triggers  a number  of  updates in  certain  scenarios before  the
+    prefix is  completly withdrawn from  the entire BGP  network. This
+    phenomenon  is  popularly known  as  _path  exploration_ or  _path
+    hunting_ and  occurs because  of path vector  property of  BGP. It
+    results  in a  series of  unwanted or  redundant  transitions that
+    overloads the BGP network.</t>
+   <t>This document describes a mechanism  to help limit the amount of
+    such  path exploration  by defining  two optional  transitive path
+    attributes for BGP: SPEAKERID_PATH and ROOT_CAUSE.</t>
+  </abstract>
+ </front>
+
+ <middle>
+
+<section anchor="introduction" title="Introduction">
+<t>
+Whenever a prefix is withdrawn using BGP withdrawl mechanism,
+it triggers a number of updates in certain scenarios before
+the prefix is completly withdrawn from the entire BGP network. This phenomenon is
+popularly known as _path exploration_ or _path hunting_ and occurs because
+of path vector property of BGP. It results in a series of unwanted or redundant transitions
+that overloads the BGP network (<xref target="I-D.li-bgp-stability"></xref>).
+</t>
+<t>
+It is interesting to note that these redundant transitions can end up triggering
+route dampening (<xref target="RFC2439"></xref>, if deployed in the network. Additionally,
+route dampening itself is known to cause path exploration in the network due to the delay
+it introduces (<xref target="I-D.li-bgp-stability"></xref>). This effectively creates a
+spiral effect on BGP instability. Both the generation of unwanted update messages and 
+the triggering of route dampening can adversly affect the BGP convergence
+time.
+</t>
+<t>
+The problem lies in the way BGP path vector is defined. With a link
+state protocol, each router stores a complete view of the entire network and
+derives reachability information from that view. In the event of a flap, each
+router can correctly determine all paths that suffer from the same root cause.
+This is not scalable in large networks in which  BGP operates. By design, 
+BGP advertises only the path it is using in terms of ASes to its 
+neighbors with each prefix. Unfortunately, this information is coarse even in a simple topology
+as the number of possible paths through the routers is quite large. When a route 
+is not reachable, because the detail route information is not included, BGP 
+selection process may end up choosing an alternative path that is actually not available. 
+After sets of such transitions, BGP speaker will resolve this abnormality and 
+decide on correct available path based on receiver side loop detection.
+</t>
+<t>
+This document proposes a mechanism to identify unreachable paths 
+for which BGP withdrawals are not received and prevent them from being
+selected as prefered paths. This helps avoid unnecessary route flapping
+within the network. A new optional transitive path attribute, SPEAKERID_PATH
+is tagged in BGP announcements as the prefix travels through the network,
+essentially creating more granular information about routers in the path.
+When a prefix is withdrawn, another optional transitive attribute, ROOT_CAUSE
+is attached to the implicit or explicit withdraws that are generated at
+different points in the network. This attribute is created once at the
+point of occurrence of the fault and gets attached to the resulting
+UPDATE message throughout the network unchanged. At a receiving speaker,
+the ROOT_CAUSE attribute is matched against
+the SPEAKERID_PATH attributes of available paths to help identify and avoid
+those that are unreachable since they are affected by the same root cause.
+</t>
+<t>
+Path exploration caused by new prefix advertisements is not discussed in
+this document.
+</t>
+      <section title="Requirements Language">
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+        "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+        document are to be interpreted as described in <xref
+        target="RFC2119">RFC 2119</xref>.</t>
+      </section>
+    </section> <!-- for Introductions section -->
+
+<section title="Reference Diagram">
+<t>
+      <figure align="center">
+        <artwork align="left"><![CDATA[
+
+                                            
+                                      +-------+
+                                      |  AS5  |
+                    .................R11     R13.......
+                   .                  |       |         .
+                  .                   +--R12--+          .
+                 .                     .                  .
+                .                     .                    .
+               .                     .                      .  
+              .                     .                        .     
+          +--R4---+             +---R7--+                 +--R10--+
+          |       |             |       |                 |       |   
+          R2      R3........... R5      R6............... R8      R9
+        . |  AS2  |             |  AS3  |                 |  AS4  |
+       .  +-------+             +-------+                 +-------+
+       .
+       .
+       .
+       .   
+   +-- R1--+
+   |       | 
+   |  AS1  | 
+   |       |
+   +-------+
+
+            ]]></artwork>
+      </figure>
+</t>
+<t>
+The figure above describes a topology that leads to classic path hunting problem.
+In steady state, AS5 has 3 paths for prefixes received from AS1:
+</t>
+        <texttable>
+
+          <ttcol align="center">Path</ttcol>
+
+          <ttcol align="left">AS_PATH</ttcol>
+
+          <c>p1(best)</c>
+
+          <c>2 1</c>
+
+          <c>p2</c>
+
+          <c>3 2 1</c>
+
+          <c>p3</c>
+
+          <c>4 3 2 1</c>
+
+        </texttable>
+<t>
+
+When the link between AS1 and AS2 goes down, it leads to a series of events
+and actions at AS5 as follows:
+</t>
+        <texttable>
+
+          <ttcol align="center">Step</ttcol>
+
+          <ttcol align="left">Event</ttcol>
+
+          <ttcol align="left">Action</ttcol>
+
+          <c>1</c>
+          <c>Recv withdraw of p1</c>
+          <c>Select p2 as best</c>
+
+          <c> </c>
+          <c> </c>
+          <c>Send AS_PATH (5 3 2 1) upstream</c>
+
+          <c>--</c>
+          <c>--</c>
+          <c>--</c>
+
+          <c>2</c>
+          <c>Recv withdraw of p2</c>
+          <c>Select p3 as best</c>
+
+          <c> </c>
+          <c> </c>
+          <c>Send AS_PATH (5 4 3 2 1) upstream</c>
+
+          <c>--</c>
+          <c>--</c>
+          <c>--</c>
+
+          <c>3</c>
+          <c>Recv withdraw of p3</c>
+          <c>Prefixes have no path</c>
+
+          <c> </c>
+          <c> </c>
+          <c>Send withdraw for the prefixes upstream</c>
+
+        </texttable>
+<t>
+This trivial example creates unnecessary churn in the network till the
+end state is reached.
+</t>
+</section>
+
+<section title="SPEAKERID_PATH attribute"
+        anchor="SID_PATH">
+<t>
+SPEAKERID_PATH is an optional transitive attribute that is very similar in encoding
+and operation to the AS_PATH attribute. It is composed of a sequence of SPEAKERID path
+segments. Each segment is represented by a triple (type, length, value). Following is
+the format:
+</t>
+<t>
+      <figure align="center">
+        <artwork align="left"><![CDATA[
+
+    0                   1           
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |        Type   |   Length      |
+   |   (1 octet)   |  (1 octet)    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   ~                               ~
+   ~             Value             ~
+   ~                               ~
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+            ]]></artwork>
+      </figure>
+</t>
+<t>
+The type is a 1-octet field with the following value defined:
+
+      <figure align="center">
+        <artwork align="left"><![CDATA[
+
+Value         Type definition
+
+  1           AS_ID_SEQUENCE: ordered set of AS and Speaker ID pair
+              a route in the UPDATE message has traversed.
+
+            ]]></artwork>
+      </figure>
+</t>
+<t>
+The length is a 1-octet field, containing the number of such pairs. Thus when the 
+type is 1, the value contains one or more entries of the following:
+
+      <figure align="center">
+        <artwork align="left"><![CDATA[
+
+      +---------------------------------+
+      |   AS     (4 bytes)              |
+      +---------------------------------+
+      |   SPEAKER-ID (4 bytes)          |
+      +---------------------------------+
+
+            ]]></artwork>
+      </figure>
+</t>
+<t>
+The use and meaning of these fields are as follows:
+<list style="empty">
+<t>AS:
+The AS is a four-octet field that indicates the AS
+number of the BGP speaker. If this ASN is from the public ASN space,
+it must have been assigned by the appropriate authority (use of ASN values
+from the private ASN space is strongly discouraged). Note that when a four-octet 
+AS supporting speaker (NEW) announces an UPDATE to a two-octet AS
+supporting speaker (OLD), it encodes AS_TRANS as a two-octet AS in the
+AS_PATH attribute instead of its own AS (<xref target="RFC6793"></xref>).
+But while encoding the SPEAKERID_PATH attribute,
+it MUST put its own four-octet AS in this field
+regardless of whether the neighbor to whom the UPDATE message is being sent is 
+an OLD or NEW speaker.
+</t>
+<t>
+SPEAKER-ID:
+The SPEAKER-ID is a four-octet field that indicates the router-id
+of the BGP speaker. If the router-id is from the public address space, it
+must have been assigned by the appropriate authority. (use of the private
+ip address as a router-id is strongly discourged).
+</t>
+</list>
+</t>
+</section>
+
+<section title="ROOT_CAUSE attribute"
+        anchor="ROOT_CAUSE">
+<t>
+ROOT_CAUSE is an optional transitive attribute that is composed of one or more
+triple (type, length, value). Following is the format:
+</t>
+<t>
+      <figure align="center">
+        <artwork align="left"><![CDATA[
+
+    0                   1           
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |        Type   |   Length      |
+   |   (1 octet)   |  (1 octet)    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   ~                               ~
+   ~             Value             ~
+   ~                               ~
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+            ]]></artwork>
+      </figure>
+</t>
+<t>
+The type is a 1-octet field with the following value defined:
+
+      <figure align="center">
+        <artwork align="left"><![CDATA[
+
+Value         Type definition
+
+  1           AS_ID_CONN: AS and router-ID pairs from both sides of the
+              connection that is the point of occurrence for the 
+              withdraw.
+
+            ]]></artwork>
+      </figure>
+</t>
+<t>
+The length is a 1-octet field, containing the length in octets of the value field.
+When the type is 1, the value contains the following:
+
+      <figure align="center">
+        <artwork align="left"><![CDATA[
+
+
+      +--------------+
+      |Flags(1 octet)|
+      +---------------------------------+
+      |   left AS     (4 bytes)         |
+      +---------------------------------+
+      |   left SPEAKER-ID (4 bytes)     |
+      +---------------------------------+
+      |   right AS    (4 bytes)         |
+      +---------------------------------+
+      |   right SPEAKER-ID (4 bytes)    |
+      +---------------------------------+
+
+            ]]></artwork>
+      </figure>
+</t>
+</section>
+
+<section title="Operation"
+        anchor="operation">
+<t>
+</t>
+<section title="Sending SPEAKERID_PATH attribute">
+<t>
+When a BGP speaker supporting the mechanism described in this document
+propagates a route it learned from another BGP speaker's UPDATE message,
+it modifies the route's SPEAKERID_PATH attribute by prepending its
+own router-ID and AS number as the last pair of the sequence. If there
+is no such attribute, the local system creates the attribute, creates a new 
+segment in the attribute of type AS_ID_SEQUENCE and places its own pair 
+into that segment. If the act of prepending will cause an overflow in
+the existing segment (i.e. more than 255 pairs), it MUST prepend a
+new segment of type AS_ID_SEQUENCE and prepend its own pair to this new
+segment. This operation should be performed regardless of whether the
+peer is IBGP or EBGP.
+</t>
+</section>
+
+<section title="Sending ROOT_CAUSE attribute">
+<t>
+</t>
+<section title="At the point of occurrence">
+<t>
+A BGP speaker originates the ROOT_CAUSE attribute into an UPDATE message in
+one of the following scenarios:
+<list style="symbols">
+<t> A session with a peer AS goes down or the associated link goes down and 
+the received prefixes need to be withdrawn or their bestpath changes.
+</t>
+<t> it receives withdraws for some prefixes without the ROOT_CAUSE attribute
+and they in turn need to be either withdrawn from the ASes upstream or 
+re-advertised with new paths.
+</t>
+</list>
+</t>
+<t>
+While originating the attribute, the speaker encodes the router-ID and AS of
+each side of the session.
+</t>
+</section>
+
+<section title="At an intermediate point">
+<t>
+Any speaker receiving a withdrawal UPDATE message with ROOT_CAUSE attribute should
+preserve and announce the resulting UPDATE message with the same attribute
+value. This can be an explicit withdraw for a prefix or an implicit withdraw.
+</t>
+<t>
+Any speaker receiving a reachable UPDATE message with ROOT_CAUSE attribute should
+preserve the attribute and not announce the attribute in resulting UPDATE message unless
+the resulting UPDATE message is an explicit withdrawal message.
+</t>
+</section>
+</section>
+
+<section title="Receiving ROOT_CAUSE Attribute">
+<t>
+Whenever a BGP speaker receives an update message to process withdrawn prefixes, it 
+does the following:
+
+<list style="symbols">
+<t> Remove the BGP path of the prefix withdrawn.
+</t>
+<t> Find all the other paths that have matching ROOT_CAUSE information
+to the one present in path that is removed. Place these paths on an Inactive
+timer for an Inactive time interval. Do not select these paths for 
+the BGP bespath selection.
+</t>
+</list>
+
+</t>
+</section>
+
+<section title="Usage of BGP Aggregates">
+<t>
+Whenever a BGP speaker creates an aggregate route from more specific
+routes, it will not inherit any BGP SPEAKERID_PATH
+information from its more specific routes used for aggregation.
+
+Instead, it will create its own SPEAKERID_PATH attribute when it
+announces the aggregate route to its BGP peers, i.e. the attribute
+will contain one segment with only its own (AS, router-id) pair when
+it announces the aggregate.
+</t>
+</section>
+
+<section title="BGP Confederation">
+<t>
+The procedures described above and the new attributes are equally applicable
+to confed EBGP and confed IBGP peering sessions.
+
+</t>
+</section>
+
+<section title="BGP Inactive Timer">
+<t>
+BGP inactive timer is used for suppressing path information from being used 
+in BGP bestpath selection. This prevents BGP from selecting such alternate 
+paths for which withdrawals are not received yet. A BGP speaker should 
+remove suppress paths whenever withdrawn. A BGP speaker must subject all
+the suppress paths for BGP bestpath selection if they are not withdrawn 
+even after inactive timer expires. 
+
+The timeout for an Inactive Timer should be kept big enough to allow the
+withdrawal information to propagate across the AS.
+</t>
+</section>
+
+</section>
+
+<section anchor="deployment_consideration"
+            title="Deployment Considerations">
+<t>
+</t>
+</section>
+
+  <section anchor="Acknowledgements" title="Acknowledgements">
+   <t>The authors would like to thank Robert Raszuk and Pedro Marques
+    for their input.</t>
+  </section>
+
+  <section anchor="IANA" title="IANA Considerations">
+   <t>IANA  shall   assign  codepoints  for   the  SPEAKERID_PATH  and
+    ROOT_CAUSE attributes.   These codepoints will come  from the "BGP
+    Path Attributes" registry.</t>
+  </section>
+
+  <section anchor="Security" title="Security Considerations">
+   <t>This extension  to BGP does  not change the  underlying security
+    issues.</t>
+  </section>
+ </middle>
+
+  <!--  *****BACK MATTER ***** -->
+
+  <back>
+    <!-- References split into informative and normative -->
+
+    <!-- There are 2 ways to insert reference entries from the citation libraries:
+    1. define an ENTITY at the top, and use "ampersand character"RFC2629;
+        here (as shown)
+    2. simply use a PI
+        "less than character"?rfc include="reference.RFC.2119.xml"?> here
+        (for I-Ds:
+          include="reference.I-D.narten-iana-considerations-rfc2434bis.xml")
+
+    Both are cited textually in the same manner: by using xref elements.
+    If you use the PI option, xml2rfc will, by default, try to find included
+    files in the same directory as the including file. You can also define
+    the XML_LIBRARY environment variable
+    with a value containing a set of directories to search.  These can be
+    either in the local
+    filing system or remote ones accessed by http (http://domain/dir/... ).-->
+
+  <references title="Normative References">
+   <?rfc include="reference.RFC.2119"?>
+   <?rfc include="reference.RFC.2439"?>
+   <?rfc include="reference.RFC.4271"?>
+   <?rfc include="reference.RFC.6793"?>
+  </references>
+
+  <references title="Informative References">
+   <?rfc include="reference.I-D.li-bgp-stability"?>
+  </references>
+    <!-- Change Log
+
+v00 2008-10-01  KP    Initial version
+v01 2008-10-25  PM    Revised version
+    -->
+  </back>
+</rfc>
