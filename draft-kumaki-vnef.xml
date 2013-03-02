@@ -1,0 +1,642 @@
+<?xml version="1.0"?>
+<?rfc comments="yes"?>
+<?rfc compact="yes"?>
+<?rfc inline="yes"?>
+<?rfc sortrefs="yes"?>
+<?rfc subcompact="no"?>
+<?rfc symrefs="yes"?>
+<?rfc toc="yes"?>
+<?rfc tocdepth="3"?>
+<?rfc tocindent="yes"?>
+<?rfc tocompact="yes"?>
+
+<rfc category="std" docName="draft-kumaki-vnef-00" ipr="pre5378Trust200902">
+
+<front>
+
+ <title>A Virtualized Network Element Framework</title>
+
+  <author fullname="Pradosh Mohapatra" initials="P.M." surname="Mohapatra">
+   <organization>Cisco Systems</organization>
+   <address>
+    <postal>
+     <street>170 W. Tasman Drive</street>
+     <city>San Jose</city>
+     <region>CA</region>
+     <code>95134</code>
+     <country>USA</country>
+    </postal>
+    <email>pmohapat@cisco.com</email>
+   </address>
+  </author>
+
+  <author fullname="Kenji Kumaki" initials="K.K." surname="Kumaki">
+   <organization>KDDI Corporation</organization>
+   <address>
+    <postal>
+     <street>Garden Air Tower</street>
+     <city>Iidabashi, Chiyoda-ku, Tokyo</city>
+     <region></region>
+     <code>102-8460</code>
+     <country>Japan</country>
+    </postal>
+    <email>ke-kumaki@kddi.com</email>
+   </address>
+  </author>
+
+  <author fullname="David Meyer" initials="D.M." surname="Meyer">
+   <organization>Brocade</organization>
+   <address>
+    <email>dmm@1-4-5.net</email>
+   </address>
+  </author>
+
+ <date month="February" year="2013" />
+
+ <abstract>
+  <t>This   document  outlines  a   new  architectural   paradigm  of
+     virtualizing  the service provider  networks and  its associated
+     engineering requirements.  The framework  is referred to  as the
+     virtual network element framework (VNEF) in the document.
+  </t>
+ </abstract>
+
+</front>
+
+<middle>
+
+ <section anchor="introduction" title="Introduction">
+  <t>VNEF  allows  service  providers  to  operate  multiple  services
+   independently  on a  common backbone  network. To  see why  this is
+   required, let us walk through a few example use cases.</t>
+
+  <section title="Use Case 1: Operational Independence">
+   <t>Network  consolidation  is  increasingly  becoming the  norm  in
+    service  provider networks.  This  consolidation creates  a common
+    backbone  infrastructure on  which the  service  specific networks
+    provide  end-to-end   service-level  connectivity.   The  services
+    include native  access services and packet based  services such as
+    Internet and  Layer 3  VPNs.  The consolidation  provides numerous
+    benefits, including higher utilization and cost savings in Capital
+    Expenditures  (CAPEX) and  Operational  Expenditures (OPEX).   The
+    model is described in <xref target="common-core"></xref>.</t>
+   <t><figure align="center" anchor="common-core" 
+        title="Network Consolidation">
+       <artwork align="left"><![CDATA[
+     __________                                __________
+    / Service1 \                              / Service1 \
+   |  Network   |                            | Network    |
+    \----------/ \                         /  \----------/
+                   \  __________________ /
+                     /  Common backbone \
+                    |   Network          |
+                     \                  /
+                   /  \----------------/ \
+     __________  /                         \   __________
+    / Service2 \                              / Service2 \
+   |  Network   |                            | Network    |
+    \----------/                              \----------/
+      ]]></artwork>
+     </figure>
+   </t>
+
+   <t>In  many  service  providers,  the  migration  of  purpose-built
+    service     networks     to    the     common     core    is     a
+    work-in-progress. Additionally,  the common backbone  opens up the
+    potential  for  a new  business  model,  referred  to as  "network
+    tenancy".  That  is, the  service provider instantiates  a service
+    dynamically  on  the common  backbone  and  rents  it out  to  the
+    customer.</t>
+
+   <t>As the  number of such  services carried on the  common backbone
+    continues to increase,  it becomes desirable to create  a level of
+    network  and operational  isolation,  much like  what a  dedicated
+    network  would  have offered.  That  is,  each "service"  operator
+    expects to have  an isolated virtual network on  the backbone that
+    can  be  managed  independently.  This provides  all  the  classic
+    benefits    of   virtualization    including    efficiency,   fast
+    provisioning, and isolation while  maintaining the advantages of a
+    common backbone network.</t>
+  </section>
+
+  <section title="Use Case 2: Network Redundancy">
+   <t>Service providers want the  ability to create multiple redundant
+    networks to  protect against  failures. Examples of  such failures
+    are  severe protocol  errors  that  melt down  a  majority of  the
+    network  elements. Redundancy  allows the  operator to  switch the
+    traffic from  one network  to the other.  It is worth  noting that
+    there  have  been attempts  at  building  such redundancy  through
+    separate physical networks  in the past, but that  turns out to be
+    expensive.</t>
+  </section>
+
+  <t>As is clear from the use cases, there are two key aspects to VNEF:
+   <list style="letters">
+    <t>An isolated environment on the network elements that can be
+       operated independently per service ("Element Virtualization")
+    </t>
+    <t>A virtualized  network on the core physical network that can be 
+       operated independently per service ("Network Virtualization"). 
+    </t>
+   </list>
+   In the following sections, we delve into these aspects of the framework 
+   and draw a set of key properties for each. We recognize that there are 
+   multiple ways to "peel the onion". As such, any reference to specific 
+   terminology describing a solution should be construed as an example.
+  </t>
+
+  <section title="Requirements Language">
+   <t>The key  words "MUST", "MUST NOT",  "REQUIRED", "SHALL", "SHALL
+      NOT",   "SHOULD",  "SHOULD   NOT",  "RECOMMENDED",   "MAY",  and
+      "OPTIONAL" in  this document are to be  interpreted as described
+      in <xref target="RFC2119">RFC 2119</xref>.
+   </t>
+  </section>
+ </section>
+
+ <section title="Terminology">
+  <t>
+   <list style="empty">
+    <t>Network Element: A routing and forwarding device in the service 
+       provider network. Other terms used interchangeably for this: router,
+       platform.
+    </t>
+    <t>Service:  A term  used  to  denote  an  autonomously
+       administered entity  (an organization, a department,  a setup, or
+       an application) that needs to run an independent network and that
+       has a configured presence on a network element. Other terms used
+       interchangeably for this: router slice.
+    </t>
+    <t>Network slice: a virtual network implemented on the physical network
+       and assigned to a particular service. How it is implemented is not
+       really that important. For example, it can be constructed using 
+       network overlays. What matter are the properties that it needs to
+       provide, such as traffic isolation, quality of service. These are
+       discussed in the later sections. Other terms used interchangeabily
+       for this: virtual network.
+    </t>
+    <t>Virtual  Network Element  Framework (VNEF):  the architectural
+       framework discussed in this document.
+    </t>
+    <t>Service ID: A  field used to denote each  service running on a
+       network element. One requirement of the service ID is to organize the
+       forwarding  tables   per  service  and  direct   packets  to  the
+       appropriate forwarding table for processing.
+    </t>
+    <t>VM: Virtual Machine
+    </t>
+   </list>
+  </t>
+ </section>
+
+ <section title="Problem Statement and Related Areas">
+  <t>Service providers need to consider the following properties of a
+   common backbone network:
+   <list style="hanging">
+    <t  hangText="Smooth  migration   and  simple  network:">  Service
+     providers want  to consolidate many  service networks into  a new
+     common  backbone network  without changing  network  topology and
+     routing / signaling policy such as IGP, BGP and MPLS.</t>
+
+    <t hangText="Network scalability:"> Routing and signaling protocols
+     need  to scale in  proportion to  the increase  in the  number of
+     nodes and protocol sessions.</t>
+   
+    <t hangText="Operational policy:">  Service providers want to keep
+     operational  policy per each  service network  intact even  if we
+     consolidate  many service  networks  into a  new common  backbone
+     network.</t>
+   </list>
+  </t>
+  <t>MTR <xref target="RFC4915"></xref>, <xref target="RFC5120"></xref>,
+   <xref target="I-D.ietf-mpls-ldp-multi-topology"></xref>
+   allows  service providers to  keep network  topology and  routing /
+   signaling policy  such as IGP,  BGP and MPLS intact.  However, this
+   technology  does  not   meet  our  requirements  because  'service'
+   network topologies  may be completely different  from the physical
+   topology.  Actually,  it depends  on  the  services. Moreover,  MTR
+   follows an  intrusive design. That is,  it does not  provide a true
+   separation  of  routing  and  signaling  layers  between  different
+   services (or a 'service' and  the parent).  We refer to this design
+   as the "vertical approach".</t>
+
+  <t>Control plane protocols scale higher through hierarchical routing
+    techniques - multi-area and multi-domain routing. We refer to this
+    design as the "horizontal approach". These techniques alone do not
+    meet our  requirements because 'service'  network topologies might
+    be  changed from  the physical  network topology.  Furthermore, in
+    this       approach,      we       can       deploy      carrier's
+    carrier <xref target="RFC4364"></xref>  to consolidate the service
+    networks.   However,  it's   realistically  difficult   to  enable
+    MPLS-capable  interfaces on the  edge routers  in the  pure-IP ISP
+    network. Actually, we need  to tranfer MPLS knowledge to operators
+    and replace  or upgrade the exsiting routers  to MPLS-capable ones
+    in the production networks.</t>
+ </section>
+
+ <section title="Reference Model" anchor="refmodel">
+  <t>VNEF's model of operation is depicted in <xref target="virtual-net">
+     </xref>.
+  </t>
+  <t><figure align="center" anchor="virtual-net" 
+         title="Virtualized Networks">
+        <artwork align="left"><![CDATA[
+                          ____________
+                         /            \
+                      __/  Virtualized \___
+                     /  \  Network 1   /   \
++---------------+   /    \____________/     \   +---------------+
+| +-----------+ |  /    / \__________/\      \  | +-----------+ |
+| | Service 1 |---/    /               \      \---| Service 1 | |
+| +-----------+ |     |     Backbone    |       | +-----------+ |
+|               |     |     Network     |       |               |
+| +-----------+ |      \                /       | +-----------+ |
+| | Service 2 |---\     \  __________  /     /----| Service 2 | |
+| +-----------+ |  \     \/__________\/     /   | +-----------+ |
+|               |   \    /            \    /    |               |
++---------------+    \__/  Virtualized \__/     +---------------+
+  Platform              \  Network 2   /
+                         \____________/
+       ]]></artwork>
+       </figure>
+  </t>
+  <t>A router slice is realized by the allocation of resources on the
+     network element. Similarly the network slice is realized through
+     a network overlay-like mechanism across all the elements
+     in the backbone network. By virtue of separating the resources, the 
+     virtualized network maintains independent control plane, data 
+     plane, and management plane. For example,  a  route  modification 
+     by a network failure on the virtualized network of service 1 in
+     <xref target="virtual-net"></xref>  does not  affect   the
+     virtualized network of service 2. Therefore, it is easy to assure 
+     different SLAs for service 1 and service 2.
+     After  the implementation  of virtualized  network, there  are many
+     cases that the virtualized  network runs out of allocated resources
+     with  the  expansion of  service  scale.  Even in such case, VNEF
+     provides the adaptive operation  to service providers by allocating
+     additional router resources to the starved virtualized network.
+  </t>
+ </section>
+
+ <section title="Applications">
+  <section title="Network Wholesale Services">
+   <t>Service  providers want to  provide a  network resource  (i.e. a
+    network slice) to  an ISP as shown in Figure 3.  In this case, the
+    ISP1  have own network  topology and  AS. Also,  the ISP1  want to
+    control and manage their network independently as they used to.</t>
+   
+    <t><figure align="center"
+         title="Service provider network 1">
+        <artwork align="left"><![CDATA[
+                             ____________
+                            /            \
+                         __/  Virtualized \___
+                        /  \  Network 1   /   \
+   +---------------+   /    \____________/     \   +---------------+
+   | +-----------+ |  /    / \__________/\      \  | +-----------+ |
+   | | ISP 1     |---/    /               \      \---| ISP 1     |
+   | +-----------+ |     |     Backbone    |       | +-----------+ |
+   |               |     |     Network     |       |               |
+   | +-----------+ |      \                /       | +-----------+ |
+   | | Service 1 |---\     \  __________  /     /----| Service 1 | |
+   | +-----------+ |  \     \/__________\/     /   | +-----------+ |
+   |               |   \    /            \    /    |               |
+   +---------------+    \__/  Virtualized \__/     +---------------+
+     Platform              \  Network 2   /
+                            \____________/
+       ]]></artwork>
+       </figure>
+    </t>
+
+   <t>This service  provider have  already provided the  cloud service
+    (service1),where  they provide some  applications to  customers on
+    the  cloud network.  The ISP1  also can  associate with  the cloud
+    platform on the cloud network.</t>
+  </section>
+  <section title="On-demand Network Services">
+   <t>Some ISPs need a network  resource (i.e. a network slice) during
+    the specific time and  period. For instance, this service provider
+    as  shown in  Figure 4  provides a  network resource  to  the ISP1
+    permanently and a network resource to the ISP2 on demand.</t>
+
+    <t><figure align="center"
+         title="Service provider network 2">
+        <artwork align="left"><![CDATA[
+                             ____________
+                            /            \
+                         __/  Virtualized \___
+                        /  \  Network 1   /   \
+   +---------------+   /    \____________/     \   +---------------+
+   | +-----------+ |  /    / \__________/\      \  | +-----------+ |
+   | | ISP 1     |---/    /               \      \---| ISP 1     |
+   | +-----------+ |     |     Backbone    |       | +-----------+ |
+   |               |     |     Network     |       |               |
+   | +-----------+ |      \                /       | +-----------+ |
+   | | ISP 2     |---\     \  __________  /     /----| ISP 2     | |
+   | +-----------+ |  \     \/__________\/     /   | +-----------+ |
+   |               |   \    /            \    /    |               |
+   +---------------+    \__/  Virtualized \__/     +---------------+
+     Platform              \  Network 2   /
+                            \____________/
+       ]]></artwork>
+       </figure>
+    </t>
+
+  </section>
+
+ </section>
+
+ <section title="Requirement Details" anchor="req">
+  <section title="Dynamic binding - On-demand Service Creation">
+   <t>The  solution needs  to provide  the ability  to create  a new
+      virtualized network on demand.  The virtualized network should be
+      built dynamically.
+   </t>
+  </section>
+
+  <section title="Control Plane/Routing Layer Separation">
+   <t>The solution needs to support an independent control plane and
+      routing   layer  per   virtualized  network.    The  conventional
+      routing/signaling protocols  (such as OSPF,  IS-IS, BGP, RSVP-TE)
+      should be able to run on  each control plane and routing layer in
+      the virtualized network.
+   </t>
+  </section>
+
+  <section title="Data Plane Separation">
+   <t>The solution  needs to  have independent forwarding  table and
+      data plane mechanisms per virtualized network. Each data plane on
+      the   virtualized  network  may   be  associated   with  physical
+      interfaces or logical interfaces (such as VLAN or tunnel).
+   </t>
+  </section>
+
+  <section title="Separate Operation of Services">
+   <t>The  solution  needs to  support  independent  operation of  a
+      virtualized network and service. Administrators should be able to
+      control routing/  signaling protocols depending  on their policy,
+      and  manage virtualized  resources allocated  to them  (i.e. CPU,
+      Memory,  and  other platform  resources).  Also, the  virtualized
+      networks should not affect each other in any way.
+   </t>
+  </section>
+
+  <section title="QoS/SLA">
+   <t>The solution needs to provide an  independent QoS/SLA
+      per virtualized network depending on a service level. Each QoS on
+      the virtualized  network should  support eight service  levels at
+      least.
+   </t>
+  </section>
+
+  <section title="Load Balancing">
+   <t>Each virtualized  network may create multiple  paths towards a
+      destination (depending on the control plane algorithms running on
+      the virtual network). The network elements should support traffic
+      load balancing, as they would do for a physical network.
+   </t>
+  </section>
+
+  <section title="Scale">
+   <t>The solution should scale well with consideration to at least the 
+      following metrics.
+      <list style="numbers">
+      <t>The number of virtualized networks</t>
+      <t>The number of nodes</t>
+      <t>The number of routes and MPLS LSPs on virtualized networks</t>
+      </list>
+   </t>
+  </section>
+ </section>
+
+ <section title="Architecture" anchor="block">
+  <t>This  section defines  the VNEF  architectural framework  and the
+     associated logical components.
+  </t>
+  <section title="Element Virtualization" anchor="vnode">
+   <t>Element virtualization is the  mechanism to create an isolated
+      environment per service on each network element running on the
+      common backbone.  Virtual machine (VM) technology offers a way
+      to  implement element  virtualization.  Essentially, multiples
+      VMs  are created on  the platform  by configuration.   Each VM
+      represents  a  service,  running  its  own  operating  system,
+      routing    protocols,   management    software,    and   other
+      applications. It also satisfies the requirement of independent
+      software upgradeability per service. Note that VMs are one way
+      of providing element virtualization. The implementation may choose
+      to use another container strategy as long as the requirements are
+      satisfied.
+   </t>
+   <t><figure align="center" anchor="elmvirt"
+        title="Element Virtualization">
+      <artwork align="left"><![CDATA[
+      +---------+       +---------+
+      |Service_1|       |Service_n|
+      |         |  ...  |         |
+      +---------+       +---------+
+
+      +---------------------------+
+      |      Service Manager      |
+      +---------------------------+
+      ]]></artwork>
+     </figure>
+   </t>
+
+   <t><xref target="elmvirt"></xref>  describes the conceptual model
+     for element virtualization.
+   </t>
+   <t>"Service  Manager" operates  as the  "owner" software  of all
+     resources in the network  element. Its principal role is to
+     arbitrate and manage the resources of the network element so that
+     multiple service environments can run in parallel. It responds to 
+     operator requests
+     to  create services, assign  resources, and  associate a  set of
+     physical  or  logical  interfaces  with each service.   In  one
+     particular implementation choice, the service manager spawns VMs
+     for  each service  that is  created by  the service provider. The
+     creation  of virtual networks  per service  is described  in the
+     next section. For example, for network overlay model of building
+     virtual  networks,  the service  manager  software  acts as  the
+     server  conduit  that listens  to  requests  from the  service's
+     software.
+   </t>
+   <t>The "service manager" also guarantees performance isolation
+     between services. If VMs are utilized to implement element 
+     virtualization, there are well-known resource allocation mechanisms
+     to allocate CPU and memory per VM. This needs to be configuration-
+     driven so that the operator can deploy customized policies for
+     resource allocation (e.g. proportional sharing or priviledged
+     allocation for certain services).
+   </t>
+  </section>
+
+  <section anchor="network" title="Network Virtualization">
+   <t>Network virtualization is  the mechanism to create independent
+      virtual networks over the same physical network
+      infrastructure. The primary characteristics of virtual networks
+      are:
+      <list style="symbols">
+      <t>Each virtual network can  be engineered and managed separately
+         (by the operator of the corresponding service). As an example,
+         all routing protocols  should be able to run  on each virtual
+         network to create the desired logical topology.</t>
+      <t>Isolation of one service's traffic from other services.</t>
+      </list>
+   </t>
+
+   <t>Virtual  network constructs  are  not new  (e.g. <xref  target=
+       "I-D.ietf-nvo3-overlay-problem-statement"></xref> describes a
+       few of the constructs). We  focus on network overlays to create
+       virtual networks  in this document. More  specifically, we will
+       discuss a specific technology of a network overlay design using
+       MPLS LSPs: GMPLS UNI (<xref target="RFC4208"></xref>). The LSPs
+       can either be created inline on the network element or as a 
+       separate layer (<xref target="RFC5440"></xref>, <xref target=
+       "I-D.crabbe-pce-stateful-pce"></xref>).
+   </t>
+
+   <t>GMPLS UNI calls  for a clean separation between  the edge nodes
+       and core  nodes. We  find that suitable  in the context  of the
+       interface between a  service and the core network. The reference
+       model from <xref target="RFC4208"></xref> is reproduced here.
+   </t>
+       <t><figure align="center" anchor="overlay" title="Overlay Network">
+         <artwork align="left"><![CDATA[
+
+       Overlay                                                  Overlay
+       Network       +----------------------------------+       Network
+     +---------+     |                                  |     +---------+
+     |  +----+ |     |  +-----+    +-----+    +-----+   |     | +----+  |
+     |  |    | |     |  |     |    |     |    |     |   |     | |    |  |
+     | -+ EN +-+-----+--+ CN  +----+ CN  +----+  CN +---+-----+-+ EN +- |
+     |  |    | |  +--+--|     |    |     |    |     |   |     | |    |  |
+     |  +----+ |  |  |  +--+--+    +--+--+    +--+--+   |     | +----+  |
+     |         |  |  |     |          |          |      |     |         |
+     +---------+  |  |     |          |          |      |     +---------+
+                  |  |     |          |          |      |
+     +---------+  |  |     |          |          |      |     +---------+
+     |         |  |  |  +--+--+       |       +--+--+   |     |         |
+     |  +----+ |  |  |  |     |       +-------+     |   |     | +----+  |
+     |  |    +-+--+  |  | CN  +---------------+ CN  |   |     | |    |  |
+     | -+ EN +-+-----+--+     |               |     +---+-----+-+ EN +- |
+     |  |    | |     |  +-----+               +-----+   |     | |    |  |
+     |  +----+ |     |                                  |     | +----+  |
+     |         |     +----------------------------------+     |         |
+     +---------+                Core Network                  +---------+
+       Overlay                                                  Overlay
+       Network                                                  Network
+
+                        Legend:   EN  -  Edge or Service Node
+                                  CN  -  Core Node
+      ]]></artwork>
+     </figure></t>
+
+   <t>The core network depicted as the large box in the center is the
+       representation of  the physical  network.  The nodes  marked as
+       'EN'  and described  as  "Overlay Network"  represent a  single
+       virtual network for a  particular service. In essence, the 'EN'
+       nodes  belong to  a service  (hosted by  a  virtualized network
+       element  as described  in  <xref target="vnode"></xref>).  They
+       request  links  to be  established  between  them  to the  'CN'
+       nodes.  The links  come  up  as GMPLS  LSPs  using the  overlay
+       signaling  mechanism. Collectively, the  links between  all the
+       'EN'  nodes belonging to  a service  represent the  topology of
+       that service.  The links  show up as  normal interfaces  to the
+       'EN'  nodes.  The  'EN'  nodes  can, thus,  run  normal  routing
+       protocols on the top to engineer the desired traffic forwarding
+       paths.
+   </t>
+  </section>
+
+  <section title="Service Identification">
+     <t>When the network element receives  a packet from the edge, how
+        does it choose which service  the packet belongs to? There are
+        a couple of design choices:
+        <list style="numbers">
+        <t>The edge-facing  interfaces are associated  with particular
+           services  by  configuration.   This  could  be  the  entire
+           physical interface or  divided into multiple sub-interfaces
+           (e.g. VLANs) per service.</t>
+        <t>A per-service  policy is configured  to look at  the packet
+           attributes and dynamically identify a service.</t>
+        </list>
+        Similarly,  when  a packet  is  received  from  the core,  the
+        service  is  identified  based  on the  virtual  network  that
+        carried the packet. For example, if GMPLS UNI LSPs are used as
+        the virtual  network construct, the top  MPLS label identifies
+        the LSP and hence the service.
+     </t>
+  </section>
+ </section>
+
+ <section achor="comp" title="Comparison with Other Technologies">
+  <section title="VRF">
+   <t>Most  of the  routers today  support  the concept  of a  virtual
+      routing                      and                      forwarding
+      (VRF) <xref target="RFC4364"></xref>.  Though there are separate
+      forwarding tables  maintained per  VRF, the technology  fails to
+      meet the requirements discussed in this document as follows:
+      <list style="empty">
+       <t>There is no operational  isolation between different VRFs on
+          a network element </t>,
+       <t>There is  no network isolation  (both for control  plane and
+          forwarding plane) on the core network between VRFs.</t>
+      </list>
+   </t>
+  </section>
+  <section title="Network Virtualization Over L3">
+   <t><xref target="I-D.ietf-nvo3-overlay-problem-statement"></xref>
+      describes  an  architectural  requirement for  virtualizing  the
+      network.  However, it focuses primarily on data center and multi-
+      tenancy and the requirements do not apply to service provider
+      networks.</t>
+  </section>
+ </section>
+
+ <section anchor="Acknowledgments" title="Acknowledgments">
+  <t>The authors wish to thank Tony Li, Akash Deshpande, Rex Fernando,
+   and  John  Bettink  for  all   the  discussions  that  led  to  the
+   architectural model described in the document.</t>
+ </section>
+
+ <section anchor="IANA" title="IANA Considerations">
+
+  <t></t>
+
+ </section>
+
+ <section anchor="Security" title="Security Considerations">
+
+  <t></t>
+
+ </section>
+
+ </middle>
+
+<back>
+
+   <references title="Normative References">
+     <?rfc include="reference.RFC.2119"?>
+     </references>
+   <references title="Informational References">
+     <?rfc include="reference.RFC.4110"?>
+     <?rfc include="reference.RFC.3746"?>
+     <?rfc include="reference.RFC.4208"?>
+     <?rfc include="reference.RFC.4364"?>
+     <?rfc include="reference.RFC.4915"?>
+     <?rfc include="reference.RFC.5120"?>
+     <?rfc include="reference.RFC.5440"?>
+     <?rfc include="reference.I-D.ietf-nvo3-overlay-problem-statement"?>
+     <?rfc include="reference.I-D.crabbe-pce-stateful-pce"?>
+     <?rfc include="reference.I-D.ietf-mpls-ldp-multi-topology"?>
+     </references>
+
+ </back>
+
+<!-- Change Log
+
+ v00 2012-05-20  PM    Initial version
+ v01 2012-05-28  PM    Comments from Dave
+ -->
+
+</rfc>
