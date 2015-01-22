@@ -11,8 +11,8 @@
 <?rfc tocindent="yes"?>
 <?rfc tocompact="yes"?>
 
-<rfc category="std" docName="draft-ietf-l3vpn-acceptown-community-06.txt"
- ipr="pre5378Trust200902">
+<rfc category="std" docName="draft-ietf-l3vpn-acceptown-community-09.txt"
+ ipr="trust200902">
 
  <front>
 
@@ -36,16 +36,9 @@
 
   <author fullname="Pradosh Mohapatra" initials="P.M."
             surname="Mohapatra">
-      <organization>Cisco Systems</organization>
+      <organization>Sproute Networks</organization>
       <address>
-        <postal>
-          <street>170 W. Tasman Drive</street>
-          <city>San Jose</city>
-          <region>CA</region>
-          <code>95134</code>
-          <country>USA</country>
-        </postal>
-        <email>pmohapat@cisco.com</email>
+        <email>mpradosh@yahoo.com</email>
       </address>
   </author>
 
@@ -64,19 +57,22 @@
       </address>
   </author>
 
-  <author initials="R" surname="Raszuk" fullname="Robert Raszuk">
-      <organization>NTT MCL Inc.</organization>
+   <author fullname='Robert Raszuk' initials='R' surname='Raszuk'>
+      <organization>Mirantis Inc.</organization>
       <address>
         <postal>
-        <street>101 S Ellsworth Avenue Suite 350</street>
-        <city>San Mateo</city>
-        <region>CA</region>
-        <code>94401</code>
-        <country>US</country>
+          <street>615 National Ave. #100</street>
+          <city>Mt View</city>
+          <region>CA</region>
+          <code>94043</code>
+          <country>USA</country>
         </postal>
+        <phone></phone>
+        <facsimile></facsimile>
         <email>robert@raszuk.net</email>
+        <uri></uri>
       </address>
-  </author>
+   </author>
 
   <author fullname="John Scudder" initials="J.S."
             surname="Scudder">
@@ -93,7 +89,7 @@
       </address>
   </author>
 
-  <date month="January" year="2013" />
+  <date month="January" year="2015" />
 
   <abstract>
    <t>Under  certain  conditions  it  is  desirable for  a  BGP  route
@@ -159,11 +155,13 @@
 
   <section anchor="accept-own"
      title="ACCEPT_OWN Community">
-   <t>This memo  defines a new BGP community,  ACCEPT_OWN, whose value
-    as assigned  by IANA is  0xFFFF0001. Processing of  the ACCEPT_OWN
-    community   SHOULD   be    controlled   by   configuration.    The
-    functionality  SHOULD  default   to  being  disabled,  as  further
-    specified in <xref target="configuration"></xref>.</t>
+
+   <t>This memo defines a new BGP community from the First Come First
+    Served range, ACCEPT_OWN, whose value as assigned by IANA is
+    0xFFFF0001. Processing of the ACCEPT_OWN community SHOULD be
+    controlled by configuration.  The functionality SHOULD default to
+    being disabled, as further specified
+    in <xref target="configuration"></xref>.</t>
 
    <section anchor="route_acceptance" title="Route Acceptance">
     <t>A  router MAY accept  a route  whose ORIGINATOR_ID  or NEXT_HOP
@@ -174,9 +172,11 @@
       <t>Processing  of   the  ACCEPT_OWN  community   is  enabled  by
        configuration.</t>
       <t>The route in question carries the ACCEPT_OWN community.</t>
+
       <t>The route in question was originated from a source VRF on the
-       router    (as    determined    by    inspecting    the    Route
-       Distinguisher).</t>
+      router. The source VRF is a VRF on the router whose configured
+      Route Distinguisher is equal to the Route Distinguisher carried
+      in the route.</t>
       <t>The route in question is  targeted to one or more destination
        VRFs  on the  router  (as determined  by  inspecting the  Route
        Target(s)).</t>
