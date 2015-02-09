@@ -11,7 +11,7 @@
 <?rfc tocindent="yes"?>
 <?rfc tocompact="yes"?>
 
-<rfc category="std" docName="draft-ietf-sidr-origin-validation-signaling-02" ipr="trust200902">
+<rfc category="std" docName="draft-ietf-sidr-origin-validation-signaling-04" ipr="trust200902">
 
  <front>
 
@@ -20,16 +20,9 @@
 
   <author fullname="Pradosh Mohapatra" initials="P.M."
             surname="Mohapatra">
-      <organization>Cisco Systems</organization>
+      <organization>Sproute Networks</organization>
       <address>
-        <postal>
-          <street>170 W. Tasman Drive</street>
-          <city>San Jose</city>
-          <region>CA</region>
-          <code>95134</code>
-          <country>USA</country>
-        </postal>
-        <email>pmohapat@cisco.com</email>
+        <email>mpradosh@yahoo.com</email>
       </address>
     </author>
 
@@ -93,7 +86,7 @@
       </address>
     </author>
 
-    <date month="December" year="2012" />
+    <date month="February" year="2014" />
 
   <abstract>
    <t>As  part of  the origination  AS validation  process, it  can be
@@ -151,7 +144,7 @@
     low-order octet of  the extended type field for  this community is
     TBD. The last octet of  the extended community encodes the route's
     validation
-    state(<xref  target="I-D.ietf-sidr-pfx-validate"></xref>.   It can
+    state<xref  target="RFC6811"></xref>.   It can
     assume the following values:</t>
     <texttable>
      <ttcol align="center">Value</ttcol>
@@ -172,18 +165,14 @@
     computed  validation  state in  the  last  octet  of the  extended
     community.   Similarly  on  the   receiving  IBGP   speakers,  the
     validation state of an IBGP  route SHOULD be derived directly from
-    the last  octet of the  extended community, if present.  Note that
-    routers  do  not perform  prefix  origin  validation (compute  the
-    validation              state              as              defined
-    in  <xref  target="I-D.ietf-sidr-pfx-validate"></xref>)  for  IBGP
-    learnt routes.</t>
+    the last  octet of the  extended community, if present.</t>
   </section>
 
   <section title="Changes to the BGP Decision Process"
         anchor="decision_process">
    <t>If  a  BGP  router  supports  prefix origin  validation  and  is
     configured  for  the  extensions  defined in  this  document,  the
-    validation  step MUST  be  performed  prior to  any  of the  steps
+    validation  step SHOULD  be  performed  prior to  any  of the  steps
     defined          in          the         decision          process
     of <xref  target="RFC4271"></xref>. The validation  step is stated
     as follows:
@@ -209,7 +198,7 @@
     autonomous system  are upgraded to support  the extensions defined
     in this document, it is necessary to define policies that match on
     the  origin  validation extended  community  and  set another  BGP
-    attribute  <xref  target="I-D.ietf-sidr-pfx-validate"></xref> that
+    attribute  <xref  target="RFC6811"></xref> that
     influences the best path selection the same way as what would have
     been enabled by an implementation of this extension.</t>
   </section>
@@ -229,7 +218,7 @@
   <section anchor="Security" title="Security Considerations">
    <t>This document introduces no new security concerns beyond what is
     described
-    in <xref target="I-D.ietf-sidr-pfx-validate"></xref>.</t>
+    in <xref target="RFC6811"></xref>.</t>
   </section>
  </middle>
 
@@ -244,7 +233,7 @@
 
      <?rfc include="reference.RFC.6480"?>
      <?rfc include="reference.RFC.6482"?>
-     <?rfc include="reference.I-D.ietf-sidr-pfx-validate"?>
+     <?rfc include="reference.RFC.6811"?>
     </references>
 
     <!-- Change Log

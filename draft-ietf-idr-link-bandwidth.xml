@@ -11,7 +11,7 @@
 <?rfc tocindent="yes"?>
 <?rfc tocompact="yes"?>
 
-<rfc category="std" docName="draft-ietf-idr-link-bandwidth-06.txt"
+<rfc category="std" docName="draft-ietf-idr-link-bandwidth-07.txt"
  ipr="pre5378Trust200902">
 
  <front>
@@ -21,17 +21,9 @@
 
   <author fullname="Pradosh Mohapatra" initials="P.M."
             surname="Mohapatra">
-      <organization>Cisco Systems</organization>
+      <organization>Sproute Networks</organization>
       <address>
-        <postal>
-          <street>170 W. Tasman Drive</street>
-          <city>San Jose</city>
-          <region>CA</region>
-          <code>95134</code>
-          <country>USA</country>
-        </postal>
-        <phone></phone>
-        <email>pmohapat@cisco.com</email>
+        <email>mpradosh@yahoo.com</email>
       </address>
   </author>
 
@@ -51,7 +43,7 @@
       </address>
   </author>
 
-  <date month="January" year="2013" />
+  <date month="February" year="2014" />
 
   <abstract>
    <t>This   document  describes  an   application  of   BGP  extended
