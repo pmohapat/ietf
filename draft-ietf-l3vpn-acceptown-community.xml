@@ -11,7 +11,7 @@
 <?rfc tocindent="yes"?>
 <?rfc tocompact="yes"?>
 
-<rfc category="std" docName="draft-ietf-l3vpn-acceptown-community-09.txt"
+<rfc category="std" docName="draft-ietf-l3vpn-acceptown-community-10.txt"
  ipr="trust200902">
 
  <front>
@@ -89,21 +89,24 @@
       </address>
   </author>
 
-  <date month="January" year="2015" />
+  <date month="June" year="2015" />
 
   <abstract>
-   <t>Under  certain  conditions  it  is  desirable for  a  BGP  route
-    reflector to  be able  to modify  the Route Target  list of  a VPN
-    route  that is distributed  by the  route reflector,  enabling the
-    route reflector to  control how a route originated  within one VRF
-    is imported into other  VRFs.  This technique works effectively as
-    long as the  VRF that exports the  route is not on the  same PE as
-    the VRF(s) that import the route.  However, due to the constraints
-    of the BGP protocol,  it does not work if the two  are on the same
-    PE.  This document describes  a modification  to the  BGP protocol
-    allowing this technique to work when  the VRFs are on the same PE,
-    allowing the technique to be  used in a standard manner throughout
-    an autonomous system.</t>
+
+   <t>Under certain conditions it is desirable for a Border Gateway
+   Protocol (BGP) route reflector to be able to modify the Route
+   Target (RT) list of a Virtual Private Network (VPN) route that the
+   route reflector distributes, enabling the route reflector to
+   control how a route originated within one Virtual Routing and
+   Forwarding (VRF) is imported into other VRFs.  This technique works
+   effectively as long as the VRF that exports the route is not on the
+   same Provider Edge (PE) router than the VRF(s) that import the
+   route.  However, due to the constraints of the BGP protocol, it
+   does not work if the two are on the same PE.  This document
+   describes a modification to the BGP protocol allowing this
+   technique to work when the VRFs are on the same PE, and to be used
+   in a standard manner throughout an autonomous system.</t>
+
   </abstract>
 
  </front>
@@ -111,17 +114,16 @@
  <middle>
 
   <section title="Introduction">
-   <t>In certain  scenarios, a BGP speaker may  maintain multiple "VPN
-    Routing         and         Forwarding         tables",         or
-    VRFs <xref target="RFC4364"></xref>.  Under certain conditions, it
-    is desirable for a route reflector  to be able to modify the Route
-    Target (RT) list  of a VPN route that is  distributed by the route
-    reflector,  enabling the route  reflector to  control how  a route
-    originated within one VRF is  imported into other VRFs.  Though it
-    is  possible  to  perform  such  policy control  directly  on  the
-    originator, it  may be  operationally cumbersome in  an autonomous
-    system with  a large number  of border routers having  complex BGP
-    policies.</t>
+
+   <t>In certain scenarios, a BGP speaker may maintain multiple VRFs
+   <xref target="RFC4364"></xref>.  Under certain conditions, it is
+   desirable for a route reflector to be able to modify the RT list of
+   a VPN route that the route reflector distributes, enabling the
+   route reflector to control how a route originated within one VRF is
+   imported into other VRFs.  Though it is possible to perform such
+   policy control directly on the originator, it may be operationally
+   cumbersome in an autonomous system with a large number of border
+   routers having complex BGP policies.</t>
 
    <t>The technique of the route reflector modifying the RT list works
     effectively as  long as the VRF  that exports the route  is not on
@@ -156,12 +158,12 @@
   <section anchor="accept-own"
      title="ACCEPT_OWN Community">
 
-   <t>This memo defines a new BGP community from the First Come First
-    Served range, ACCEPT_OWN, whose value as assigned by IANA is
-    0xFFFF0001. Processing of the ACCEPT_OWN community SHOULD be
-    controlled by configuration.  The functionality SHOULD default to
-    being disabled, as further specified
-    in <xref target="configuration"></xref>.</t>
+   <t>This memo defines a new well-known BGP community from the First
+   Come First Served range, ACCEPT_OWN, whose value as assigned by
+   IANA is 0xFFFF0001. Processing of the ACCEPT_OWN community SHOULD
+   be controlled by configuration.  The functionality SHOULD default
+   to being disabled, as further specified in <xref
+   target="configuration"></xref>.</t>
 
    <section anchor="route_acceptance" title="Route Acceptance">
     <t>A  router MAY accept  a route  whose ORIGINATOR_ID  or NEXT_HOP
@@ -184,9 +186,10 @@
        VRF.</t>
      </list>
     </t>
-    <t>A route MUST  never be accepted back into  its source VRF, even
-     if it  carries one or more  Route Targets (RTs)  which match that
-     VRF.</t>
+
+    <t>A route MUST NOT ever be accepted back into its source VRF,
+    even if it carries one or more RTs which match that VRF.</t>
+
    </section>
 
    <section anchor="propagation"
@@ -197,7 +200,7 @@
      Target list (for example VPN routes with a SAFI of 128). As such,
      it  SHOULD  NOT  be  attached  to  any  routes  which  cannot  be
      associated with a source VRF.  This implies that when propagating
-     routes  into  a  VRF,  the  ACCEPT_OWN community  should  not  be
+     routes  into  a  VRF,  the  ACCEPT_OWN community  SHOULD NOT  be
      propagated.   Likewise,  if   a  route  carrying  the  ACCEPT_OWN
      community is received  in an address family which  does not allow
      the source VRF to be  looked up, the ACCEPT_OWN community MUST be
@@ -206,13 +209,14 @@
 
    <section anchor="configuration"
          title="Configuration Control">
-    <t>ACCEPT_OWN handling SHOULD  be controlled by configuration, and
-     SHOULD default to being disabled.  When ACCEPT_OWN is disabled by
-     configuration (either explicitly or  by default), the router MUST
-     NOT   apply   the  special   route   acceptance  rules   detailed
-     in  <xref target="route_acceptance"></xref>.   The  router SHOULD
-     still      apply     the      propagation      rules     detailed
-     in <xref target="propagation"></xref>.</t>
+    <t>ACCEPT_OWN handling SHOULD be controlled by configuration, and
+    if controlled by configuration, it MUST default to being disabled.
+    When ACCEPT_OWN is disabled by configuration (either explicitly or
+    by default), the router MUST NOT apply the special route
+    acceptance rules detailed in <xref
+    target="route_acceptance"></xref>.  The router SHOULD still apply
+    the propagation rules detailed in <xref
+    target="propagation"></xref>.</t>
    </section>
   </section>
 
@@ -232,7 +236,7 @@
    <t>In   all   other   respects,   the  decision   process   remains
     unchanged. This  extra step MUST  only be invoked during  the best
     path          selection         process          of         VPN-IP
-    routes <xref target="RFC4364"></xref> (i.e. it MUST NOT be invoked
+    routes <xref target="RFC4364"></xref> (i.e., it MUST NOT be invoked
     for the best path selection of "imported" IP routes in a VRF). The
     purpose of the extra step is  to allow the paths advertised by the
     route reflector  with ACCEPT_OWN community to be  selected as best
@@ -269,11 +273,14 @@
 
   <section anchor="security"
          title="Security Considerations">
-   <t>ACCEPT_OWN  as  described above  permits  a  router's own  route
-    prefix to be advertised to a different VRF on that router. In this
-    respect, such a route is similar to any other BGP route and shares
-    the  same set  of security  vulnerabilities and  concerns.  No new
-    fundamental security issues are introduced by ACCEPT_OWN.</t>
+
+   <t>ACCEPT_OWN as described above permits a router's own route
+   prefix to be advertised to a different VRF on that router. In this
+   respect, such a route is similar to any other BGP route and shares
+   the same set of security vulnerabilities and concerns. This
+   extension does not change the underlying security issues inherent
+   in BGP VPN <xref target="RFC4364"></xref>.</t>
+
   </section>
 
   <section anchor="iana"
@@ -303,7 +310,7 @@
   </references>
 
   <section anchor="extranet"
-    title="Local Extranet Application (non-informative)">
+    title="Local Extranet Application (non-normative)">
    <t>One of the applications  for this behavior is auto-configuration
     of  extranets within  MPLS  VPN networks.  Consider the  following
     topology:
